@@ -1,0 +1,47 @@
+# vml-sync-server 的 systemd 单元文件示例。
+#
+# 假设：
+#   - 程序在 /opt/vml-sync-server/vml-sync-server
+#   - 数据目录是 /opt/vml-sync-server/data
+#   - 有一个专门的系统用户 vml，/opt/vml-sync-server 归它所有
+#
+# 没有配置文件：启动参数只有监听地址和数据目录，其余设置都在管理页里改。
+#
+# 安装：
+#   sudo cp deploy/vml-sync-server.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now vml-sync-server
+#   journalctl -u vml-sync-server -n 20      # 第一次启动：在这里看管理员的初始密码
+
+[Unit]
+Description=vml-sync-server (model sync relay)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vml
+Group=vml
+WorkingDirectory=/opt/vml-sync-server
+# 127.0.0.1:8080 只接受本机的反向代理；想直接对外就改成 :8080。
+ExecStart=/opt/vml-sync-server/vml-sync-server -listen 127.0.0.1:8080 -data /opt/vml-sync-server/data
+Restart=on-failure
+RestartSec=5
+# 收到停止信号后程序会优雅退出（最多等进行中的请求 20 秒），多留一点余量。
+TimeoutStopSec=40
+LimitNOFILE=65536
+
+# 加固：程序只需要写数据目录。
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/vml-sync-server/data
+# 数据目录不在上面这个位置的话，把 -data 和这里一起改。
+
+# 想直接监听 80 / 443 这样的低位端口时取消下面两行的注释。
+#AmbientCapabilities=CAP_NET_BIND_SERVICE
+#CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

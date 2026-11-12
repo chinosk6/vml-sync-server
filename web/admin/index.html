@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>vml-sync-server</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="app.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+
+<!-- Icons. Referenced with <use href="#i-…">; nothing is loaded from elsewhere. -->
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-logo" viewBox="0 0 16 16"><path d="M8 1.8l5.5 3.1v6.2L8 14.2l-5.5-3.1V4.9z"/><path d="M2.5 4.9L8 8l5.5-3.1M8 8v6.2"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M3.5 10.5H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h6.5a1 1 0 0 1 1 1v.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="M3 8.5l3.2 3.2L13 4.8"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2.5v3h-3"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 16 16"><path d="M6.5 2.5h-3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3"/><path d="M10.5 11l3-3-3-3"/><path d="M13.5 8h-7"/></symbol>
+  <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5l3 3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 16 16"><path d="M2.5 4.5h11"/><path d="M6 4.5v-2h4v2"/><path d="M4 4.5l.6 8.1a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9l.6-8.1"/></symbol>
+  <symbol id="i-x" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></symbol>
+  <symbol id="i-left" viewBox="0 0 16 16"><path d="M10 3.5L5.5 8l4.5 4.5"/></symbol>
+  <symbol id="i-right" viewBox="0 0 16 16"><path d="M6 3.5L10.5 8 6 12.5"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M2.5 8h11"/><path d="M8 2.5c1.8 1.7 2.6 3.5 2.6 5.5s-.8 3.8-2.6 5.5C6.2 11.8 5.4 10 5.4 8S6.2 4.2 8 2.5z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 16 16"><path d="M8 2.2l6 10.6H2z"/><path d="M8 6.5v3M8 11.3v.1"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 16 16"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 16 16"><path d="M6.4 3.7A6 6 0 0 1 8 3.5c4 0 6.5 4.5 6.5 4.5a11 11 0 0 1-1.7 2.2M10.9 11.7A5.7 5.7 0 0 1 8 12.5C4 12.5 1.5 8 1.5 8a10.6 10.6 0 0 1 2.8-3.2"/><path d="M2.5 2.5l11 11"/></symbol>
+  <symbol id="i-download" viewBox="0 0 16 16"><path d="M8 2.5v8M4.8 7.5L8 10.7l3.2-3.2"/><path d="M2.5 13.5h11"/></symbol>
+</svg>
+
+<noscript><p class="noscript">这个页面需要启用 JavaScript。 / This page needs JavaScript.</p></noscript>
+
+<!-- ============================================================ boot -->
+<div id="view-boot" class="center-screen">
+  <div class="boot-box">
+    <div id="boot-spinner" class="spinner" aria-hidden="true"></div>
+    <p id="boot-text" data-i18n="boot.connecting">正在连接服务器…</p>
+    <p id="boot-error" class="form-error" role="alert" hidden></p>
+    <button id="boot-retry" class="btn btn-primary" type="button" hidden data-i18n="boot.retry">重试</button>
+  </div>
+</div>
+
+<!-- =========================================================== login -->
+<main id="view-login" class="center-screen" hidden>
+  <form id="login-form" class="login-card" novalidate>
+    <div class="login-brand">
+      <svg class="icon logo" aria-hidden="true"><use href="#i-logo"/></svg>
+      <span>vml-sync-server</span>
+    </div>
+    <h1 data-i18n="login.title">管理员登录</h1>
+    <p class="muted" data-i18n="login.desc">输入管理员密码。</p>
+    <p id="login-notice" class="notice" hidden></p>
+    <label class="field">
+      <span data-i18n="login.password">密码</span>
+      <input id="login-password" type="password" name="password" autocomplete="current-password" autocapitalize="off" spellcheck="false">
+    </label>
+    <p id="login-error" class="form-error" role="alert" hidden></p>
+    <button id="login-submit" class="btn btn-primary btn-block" type="submit">登录</button>
+    <p class="muted small" data-i18n="login.firstTime"></p>
+    <div class="login-foot">
+      <button type="button" class="btn btn-ghost btn-sm js-lang">
+        <svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg><span class="js-lang-label">English</span>
+      </button>
+    </div>
+  </form>
+</main>
+
+<!-- ============================================================= app -->
+<div id="view-app" hidden>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <svg class="icon logo" aria-hidden="true"><use href="#i-logo"/></svg>
+        <span class="brand-name" data-i18n="brand">模型同步管理</span>
+        <span id="brand-version" class="brand-ver"></span>
+      </div>
+      <div class="topbar-actions">
+        <span id="live-pill" class="pill pill-live" hidden><span class="dot" aria-hidden="true"></span><span data-i18n="top.live">自动刷新中</span></span>
+        <button id="btn-refresh" class="btn btn-ghost" type="button" data-i18n-attr="title:top.refresh;aria-label:top.refresh">
+          <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg><span class="btn-label" data-i18n="top.refresh">刷新</span>
+        </button>
+        <button class="btn btn-ghost js-lang" type="button">
+          <svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg><span class="btn-label js-lang-label">English</span>
+        </button>
+        <button id="btn-logout" class="btn btn-ghost" type="button" data-i18n-attr="title:top.logout;aria-label:top.logout">
+          <svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg><span class="btn-label" data-i18n="top.logout">退出登录</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div id="conn-banner" class="banner" role="alert" hidden>
+    <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+    <span id="conn-text"></span>
+    <button id="conn-retry" class="btn btn-sm" type="button" data-i18n="conn.retry">立即重试</button>
+  </div>
+
+  <div id="pw-banner" class="banner banner-warn" role="status" hidden>
+    <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+    <span data-i18n="pwb.text">还在用初始密码，请尽快修改。</span>
+    <button id="pw-banner-go" class="btn btn-sm" type="button" data-i18n="pwb.go">去修改密码</button>
+  </div>
+
+
+  <main class="page">
+
+    <!-- ------------------------------------------------ overview -->
+    <section class="overview" aria-labelledby="ov-heading">
+      <h2 id="ov-heading" class="sr-only" data-i18n="ov.heading">概况</h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label" data-i18n="ov.models">模型数量</div>
+          <div class="stat-value" id="ov-models">—</div>
+          <div class="stat-sub" id="ov-models-sub"></div>
+        </div>
+        <div class="stat">
+          <div class="stat-label" data-i18n="ov.space">占用空间</div>
+          <div class="stat-value" id="ov-space">—</div>
+          <div class="meter" id="ov-meter" hidden><div class="meter-fill" id="ov-meter-fill"></div></div>
+          <div class="stat-sub" id="ov-space-sub"></div>
+          <div class="stat-sub" id="ov-disk" hidden></div>
+        </div>
+        <div class="stat">
+          <div class="stat-label" data-i18n="ov.blocked">禁止名单</div>
+          <div class="stat-value" id="ov-blocked">—</div>
+          <div class="stat-sub" id="ov-blocked-sub"></div>
+        </div>
+        <div class="stat">
+          <div class="stat-label" data-i18n="ov.uploads">进行中的上传</div>
+          <div class="stat-value" id="ov-uploads">—</div>
+          <div class="stat-sub" id="ov-uploads-sub"></div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">
+            <span data-i18n="ov.retention">自动删除</span>
+            <button id="ov-edit-retention" class="link-btn" type="button" data-i18n="ov.change">修改</button>
+          </div>
+          <div class="stat-value" id="ov-retention">—</div>
+          <div class="stat-sub" id="ov-retention-sub"></div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">
+            <span data-i18n="ov.storage">存储 / 传输</span>
+            <button id="ov-edit-storage" class="link-btn" type="button" data-i18n="ov.change">修改</button>
+          </div>
+          <div class="stat-value" id="ov-storage">—</div>
+          <div class="stat-sub" id="ov-storage-sub"></div>
+        </div>
+      </div>
+      <p class="cleanup-line" id="ov-cleanup"></p>
+    </section>
+
+    <!-- ---------------------------------------------------- tabs -->
+    <div class="tabs" role="tablist" id="tabs">
+      <button role="tab" type="button" id="tab-models" data-tab="models" aria-controls="panel-models">
+        <span data-i18n="tab.models">模型</span><span class="count" id="tabc-models"></span>
+      </button>
+      <button role="tab" type="button" id="tab-blocklist" data-tab="blocklist" aria-controls="panel-blocklist">
+        <span data-i18n="tab.blocklist">禁止名单</span><span class="count" id="tabc-blocklist"></span>
+      </button>
+      <button role="tab" type="button" id="tab-uploads" data-tab="uploads" aria-controls="panel-uploads">
+        <span data-i18n="tab.uploads">进行中的上传</span><span class="count count-live" id="tabc-uploads"></span>
+      </button>
+      <button role="tab" type="button" id="tab-settings" data-tab="settings" aria-controls="panel-settings">
+        <span data-i18n="tab.settings">设置</span><span class="nav-dot" id="tab-settings-dot" hidden></span>
+      </button>
+    </div>
+
+    <!-- -------------------------------------------------- models -->
+    <section id="panel-models" class="panel" role="tabpanel" aria-labelledby="tab-models" tabindex="-1">
+      <div class="toolbar">
+        <label class="search">
+          <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="m-search" type="search" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder:m.search;aria-label:m.search">
+        </label>
+        <div class="toolbar-right">
+          <div class="mobile-sort">
+            <select id="m-sort" data-i18n-attr="aria-label:m.sortBy"></select>
+            <button id="m-order" class="btn" type="button"></button>
+          </div>
+          <select id="m-limit" data-i18n-attr="aria-label:m.pageSizeLabel"></select>
+        </div>
+      </div>
+
+      <div id="m-selbar" class="selbar" hidden>
+        <span id="m-selcount" class="selbar-count"></span>
+        <button id="m-del-selected" class="btn btn-danger btn-sm" type="button">
+          <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg><span data-i18n="m.deleteSelected">删除所选</span>
+        </button>
+        <button id="m-clear-sel" class="btn btn-ghost btn-sm" type="button" data-i18n="m.clearSelection">取消选择</button>
+      </div>
+
+      <div class="table-wrap" id="m-wrap">
+        <table class="data models">
+          <thead>
+            <tr>
+              <th class="c-check" scope="col"><input type="checkbox" id="m-all" data-i18n-attr="aria-label:m.selectAll;title:m.selectAll"></th>
+              <th class="c-name" scope="col" data-sort="name"><button type="button" class="th-sort"><span data-i18n="col.name">文件名</span><span class="sort-ind" aria-hidden="true"></span></button></th>
+              <th class="c-size" scope="col" data-sort="size"><button type="button" class="th-sort"><span data-i18n="col.size">大小</span><span class="sort-ind" aria-hidden="true"></span></button></th>
+              <th class="c-uploader" scope="col" data-sort="uploader"><button type="button" class="th-sort"><span data-i18n="col.uploader">上传者</span><span class="sort-ind" aria-hidden="true"></span></button></th>
+              <th class="c-uploaded" scope="col" data-sort="uploaded_at"><button type="button" class="th-sort"><span data-i18n="col.uploaded">上传时间</span><span class="sort-ind" aria-hidden="true"></span></button></th>
+              <th class="c-lastdl" scope="col" data-sort="last_download_at"><button type="button" class="th-sort"><span data-i18n="col.lastDl">最近下载</span><span class="sort-ind" aria-hidden="true"></span></button></th>
+              <th class="c-count" scope="col" data-sort="download_count"><button type="button" class="th-sort"><span data-i18n="col.count">下载次数</span><span class="sort-ind" aria-hidden="true"></span></button></th>
+              <th class="c-exp" scope="col" data-sort="expires_at"><button type="button" class="th-sort"><span data-i18n="col.expires">到期</span><span class="sort-ind" aria-hidden="true"></span></button></th>
+              <th class="c-id" scope="col"><span data-i18n="col.id">id</span></th>
+              <th class="c-act" scope="col"><span class="sr-only" data-i18n="col.actions">操作</span></th>
+            </tr>
+          </thead>
+          <tbody id="m-body"></tbody>
+        </table>
+        <div id="m-state" class="table-state" hidden></div>
+      </div>
+
+      <div class="pager">
+        <span id="m-range" class="pager-range"></span>
+        <div class="pager-btns">
+          <button id="m-prev" class="btn btn-sm" type="button" data-i18n-attr="title:m.prev;aria-label:m.prev"><svg class="icon" aria-hidden="true"><use href="#i-left"/></svg></button>
+          <span id="m-page" class="pager-page"></span>
+          <button id="m-next" class="btn btn-sm" type="button" data-i18n-attr="title:m.next;aria-label:m.next"><svg class="icon" aria-hidden="true"><use href="#i-right"/></svg></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ----------------------------------------------- blocklist -->
+    <section id="panel-blocklist" class="panel" role="tabpanel" aria-labelledby="tab-blocklist" tabindex="-1" hidden>
+      <div class="panel-intro">
+        <p class="muted" data-i18n="b.desc">名单里的模型不接受上传，也不提供下载，直到解除。</p>
+      </div>
+      <div class="toolbar">
+        <label class="search">
+          <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="b-filter" type="search" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder:b.filter;aria-label:b.filter">
+        </label>
+        <div class="toolbar-right">
+          <button id="b-add" class="btn btn-primary" type="button">
+            <svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="b.add">按 id 添加</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="b-selbar" class="selbar" hidden>
+        <span id="b-selcount" class="selbar-count"></span>
+        <button id="b-unblock-selected" class="btn btn-sm" type="button" data-i18n="b.unblockSelected">解除所选</button>
+        <button id="b-clear-sel" class="btn btn-ghost btn-sm" type="button" data-i18n="m.clearSelection">取消选择</button>
+      </div>
+
+      <div class="table-wrap" id="b-wrap">
+        <table class="data blocklist">
+          <thead>
+            <tr>
+              <th class="c-check" scope="col"><input type="checkbox" id="b-all" data-i18n-attr="aria-label:b.selectAll;title:b.selectAll"></th>
+              <th class="c-bid" scope="col"><span data-i18n="col.id">id</span></th>
+              <th class="c-bname" scope="col"><span data-i18n="col.name">文件名</span></th>
+              <th class="c-note" scope="col"><span data-i18n="col.note">备注</span></th>
+              <th class="c-btime" scope="col"><span data-i18n="col.blockedAt">禁止时间</span></th>
+              <th class="c-act" scope="col"><span class="sr-only" data-i18n="col.actions">操作</span></th>
+            </tr>
+          </thead>
+          <tbody id="b-body"></tbody>
+        </table>
+        <div id="b-state" class="table-state" hidden></div>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------- uploads -->
+    <section id="panel-uploads" class="panel" role="tabpanel" aria-labelledby="tab-uploads" tabindex="-1" hidden>
+      <div class="table-wrap" id="u-wrap">
+        <table class="data uploads">
+          <thead>
+            <tr>
+              <th class="c-name" scope="col"><span data-i18n="col.name">文件名</span></th>
+              <th class="c-uploader" scope="col"><span data-i18n="col.uploader">上传者</span></th>
+              <th class="c-progress" scope="col"><span data-i18n="col.progress">进度</span></th>
+              <th class="c-mode" scope="col"><span data-i18n="col.mode">方式</span></th>
+              <th class="c-uploaded" scope="col"><span data-i18n="col.started">开始时间</span></th>
+              <th class="c-id" scope="col"><span data-i18n="col.id">id</span></th>
+            </tr>
+          </thead>
+          <tbody id="u-body"></tbody>
+        </table>
+        <div id="u-state" class="table-state" hidden></div>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------ settings -->
+    <section id="panel-settings" class="panel-stack" role="tabpanel" aria-labelledby="tab-settings" tabindex="-1" hidden>
+      <nav id="s-nav" class="s-nav" data-i18n-attr="aria-label:s.nav">
+        <button type="button" class="s-nav-btn" data-goto="client"><span data-i18n="c.title">客户端接入</span></button>
+        <button type="button" class="s-nav-btn" data-goto="retention"><span data-i18n="s.retTitle">自动删除</span><span class="nav-dot" hidden></span></button>
+        <button type="button" class="s-nav-btn" data-goto="limits"><span data-i18n="l.title">容量与上传</span><span class="nav-dot" hidden></span></button>
+        <button type="button" class="s-nav-btn" data-goto="storage"><span data-i18n="st.title">存储</span><span class="nav-dot" hidden></span></button>
+        <button type="button" class="s-nav-btn" data-goto="access"><span data-i18n="a.title">访问与安全</span><span class="nav-dot" hidden></span></button>
+        <button type="button" class="s-nav-btn" data-goto="password"><span data-i18n="pw.title">管理员密码</span></button>
+      </nav>
+
+      <div id="s-load-error" class="form-error load-error" role="alert" hidden>
+        <span id="s-load-error-text"></span>
+        <button id="s-load-retry" class="btn btn-sm" type="button" data-i18n="retry">重试</button>
+      </div>
+
+      <!-- client access -->
+      <section class="card" id="g-client" aria-labelledby="c-heading">
+        <div class="card-head"><h3 id="c-heading" data-i18n="c.title">客户端接入</h3></div>
+        <p class="muted" data-i18n="c.desc"></p>
+        <dl class="kv kv-conn">
+          <dt data-i18n="c.url">服务器地址</dt>
+          <dd>
+            <div class="value-row">
+              <code id="c-url" class="value-code"></code>
+              <button id="c-url-copy" class="icon-btn" type="button" data-i18n-attr="title:c.copyUrl;aria-label:c.copyUrl"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button>
+            </div>
+          </dd>
+          <dt data-i18n="c.key">客户端密钥</dt>
+          <dd>
+            <div class="value-row">
+              <code id="c-key" class="value-code"></code>
+              <button id="c-key-toggle" class="icon-btn" type="button"><svg class="icon" aria-hidden="true"><use id="c-key-toggle-icon" href="#i-eye"/></svg></button>
+              <button id="c-key-copy" class="icon-btn" type="button" data-i18n-attr="title:c.copyKey;aria-label:c.copyKey"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button>
+            </div>
+          </dd>
+        </dl>
+        <div class="card-actions">
+          <button id="c-regen" class="btn" type="button" data-i18n="c.regen">更换密钥…</button>
+          <span class="muted small" data-i18n="c.regenNote"></span>
+        </div>
+        <div class="subcard">
+          <h4><code>sync_server.json</code></h4>
+          <p class="muted" data-i18n="c.jsonDesc">把这个文件发给朋友。他们在游戏里按 R 打开轮盘 → 设置 → 模型同步 → 打开配置文件夹，把文件放进去即可。</p>
+          <pre id="c-json" class="code-block"></pre>
+          <p id="c-json-note" class="muted small" data-i18n="c.jsonMasked"></p>
+          <div class="card-actions">
+            <button id="c-json-download" class="btn btn-primary" type="button">
+              <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span data-i18n="c.jsonDownload">下载文件</span>
+            </button>
+            <button id="c-json-copy" class="btn" type="button">
+              <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span data-i18n="c.jsonCopy">复制内容</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- auto-delete -->
+      <form class="card s-group" id="g-retention" data-group="retention" novalidate>
+        <div class="card-head">
+          <h3 data-i18n="s.retTitle">自动删除</h3>
+          <span class="badge badge-dirty js-dirty" data-i18n="s.unsaved" hidden>未保存</span>
+        </div>
+        <p class="muted" data-i18n="s.retDesc"></p>
+        <div class="field" data-field="retention_hours">
+          <label for="f-retention" data-i18n="s.retLabel">时长（小时）</label>
+          <div class="ret-row">
+            <input id="f-retention" class="in-num" type="text" inputmode="numeric" maxlength="6" autocomplete="off">
+            <span id="s-human" class="ret-human"></span>
+          </div>
+          <div class="chips" id="s-chips" role="group" data-i18n-attr="aria-label:s.presets"></div>
+        </div>
+        <p id="s-hint" class="hint-warn" hidden></p>
+        <p class="form-error js-group-error" role="alert" hidden></p>
+        <div class="card-actions">
+          <button type="submit" class="btn btn-primary js-save">保存</button>
+          <button type="button" class="btn btn-ghost js-reset" data-i18n="s.reset" hidden>还原</button>
+          <span id="s-current" class="muted"></span>
+        </div>
+      </form>
+
+      <div class="card" id="g-cleanup">
+        <h3 data-i18n="s.cleanTitle">立即清理</h3>
+        <p class="muted" data-i18n="s.cleanDesc"></p>
+        <p id="s-clean-off" class="hint-warn" hidden data-i18n="s.cleanOff"></p>
+        <div class="card-actions">
+          <button id="s-clean" type="button" class="btn">立即清理</button>
+          <span id="s-clean-result" class="clean-result" role="status"></span>
+        </div>
+      </div>
+
+      <!-- limits -->
+      <form class="card s-group" id="g-limits" data-group="limits" novalidate>
+        <div class="card-head">
+          <h3 data-i18n="l.title">容量与上传</h3>
+          <span class="badge badge-dirty js-dirty" data-i18n="s.unsaved" hidden>未保存</span>
+        </div>
+        <div class="form-grid">
+          <div class="field" data-field="max_file_mb">
+            <label for="f-max-file" data-i18n="l.maxFile">单个文件上限（MB）</label>
+            <div class="ret-row">
+              <input id="f-max-file" class="in-num" type="text" inputmode="numeric" maxlength="5" autocomplete="off">
+              <span id="l-file-human" class="ret-human"></span>
+            </div>
+            <div class="field-hint" data-i18n="l.maxFileHint"></div>
+          </div>
+          <div class="field" data-field="max_total_mb">
+            <label for="f-max-total" data-i18n="l.maxTotal">总容量上限（MB）</label>
+            <div class="ret-row">
+              <input id="f-max-total" class="in-num" type="text" inputmode="numeric" maxlength="12" autocomplete="off">
+              <span id="l-total-human" class="ret-human"></span>
+            </div>
+            <div class="field-hint"><span data-i18n="l.maxTotalHint"></span> <span id="l-usage"></span></div>
+          </div>
+          <div class="field" data-field="chunk_mb">
+            <label for="f-chunk" data-i18n="l.chunk">上传分片大小（MB）</label>
+            <input id="f-chunk" class="in-num" type="text" inputmode="numeric" maxlength="2" autocomplete="off">
+            <div class="field-hint" data-i18n="l.chunkHint"></div>
+          </div>
+          <div class="field" data-field="max_active_uploads">
+            <label for="f-max-uploads" data-i18n="l.maxUploads">同时进行的上传数上限</label>
+            <input id="f-max-uploads" class="in-num" type="text" inputmode="numeric" maxlength="2" autocomplete="off">
+            <div class="field-hint" data-i18n="l.maxUploadsHint"></div>
+          </div>
+        </div>
+        <p class="form-error js-group-error" role="alert" hidden></p>
+        <div class="card-actions">
+          <button type="submit" class="btn btn-primary js-save">保存</button>
+          <button type="button" class="btn btn-ghost js-reset" data-i18n="s.reset" hidden>还原</button>
+        </div>
+      </form>
+
+      <!-- storage -->
+      <form class="card s-group" id="g-storage" data-group="storage" novalidate>
+        <div class="card-head">
+          <h3 data-i18n="st.title">存储</h3>
+          <span class="badge badge-dirty js-dirty" data-i18n="s.unsaved" hidden>未保存</span>
+        </div>
+        <p class="muted" data-i18n="st.desc"></p>
+
+        <fieldset class="field" data-field="storage.type">
+          <legend data-i18n="st.type">文件存在哪里</legend>
+          <div class="choice-list">
+            <label class="radio">
+              <input type="radio" name="f-storage-type" value="local">
+              <span><b data-i18n="st.local">本地磁盘</b><small data-i18n="st.localDesc"></small></span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="f-storage-type" value="s3">
+              <span><b data-i18n="st.s3">S3 兼容的对象存储</b><small data-i18n="st.s3Desc"></small></span>
+            </label>
+          </div>
+        </fieldset>
+        <p id="st-move-warn" class="hint-warn" data-i18n="st.moveWarn" hidden></p>
+
+        <div id="st-s3" class="subcard" hidden>
+          <h4 data-i18n="st.s3Title">S3 设置</h4>
+          <details class="help">
+            <summary data-i18n="st.r2Summary">Cloudflare R2 怎么填</summary>
+            <ol>
+              <li data-i18n="st.r2Step1"></li>
+              <li data-i18n="st.r2Step2"></li>
+              <li data-i18n="st.r2Step3"></li>
+              <li data-i18n="st.r2Step4"></li>
+            </ol>
+          </details>
+          <div class="form-grid">
+            <div class="field span-2" data-field="storage.s3.endpoint">
+              <label for="f-s3-endpoint" data-i18n="st.endpoint">地址（endpoint）</label>
+              <input id="f-s3-endpoint" class="mono" type="text" maxlength="300" autocomplete="off" autocapitalize="off" spellcheck="false" data-i18n-attr="placeholder:st.endpointPh">
+              <div class="field-hint" data-i18n="st.endpointHint"></div>
+            </div>
+            <div class="field" data-field="storage.s3.bucket">
+              <label for="f-s3-bucket" data-i18n="st.bucket">桶（bucket）</label>
+              <input id="f-s3-bucket" class="mono" type="text" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false">
+            </div>
+            <div class="field" data-field="storage.s3.region">
+              <label for="f-s3-region" data-i18n="st.region">区域（region）</label>
+              <input id="f-s3-region" class="mono" type="text" maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false">
+              <div class="field-hint" data-i18n="st.regionHint"></div>
+            </div>
+            <div class="field" data-field="storage.s3.access_key_id">
+              <label for="f-s3-access-key">Access Key ID</label>
+              <input id="f-s3-access-key" class="mono" type="text" maxlength="200" autocomplete="off" autocapitalize="off" spellcheck="false">
+            </div>
+            <div class="field" data-field="storage.s3.secret_access_key">
+              <label for="f-s3-secret">Secret Access Key</label>
+              <input id="f-s3-secret" class="mono" type="password" maxlength="300" autocomplete="new-password" autocapitalize="off" spellcheck="false">
+              <div class="field-hint" data-i18n="st.secretHint"></div>
+            </div>
+            <div class="field" data-field="storage.s3.prefix">
+              <label for="f-s3-prefix" data-i18n="st.prefix">对象名前缀（prefix）</label>
+              <input id="f-s3-prefix" class="mono" type="text" maxlength="200" autocomplete="off" autocapitalize="off" spellcheck="false">
+              <div class="field-hint" data-i18n="st.prefixHint"></div>
+            </div>
+            <div class="field" data-field="storage.s3.path_style">
+              <label class="check"><input id="f-s3-path-style" type="checkbox"><span data-i18n="st.pathStyle"></span></label>
+              <div class="field-hint" data-i18n="st.pathStyleHint"></div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button id="st-test" type="button" class="btn">测试连接</button>
+            <span id="st-test-result" class="test-result" role="status"></span>
+          </div>
+          <p class="muted small" data-i18n="st.testNote"></p>
+        </div>
+
+        <fieldset class="field" data-field="transfer">
+          <legend data-i18n="st.transfer">传输方式</legend>
+          <div class="choice-list">
+            <label class="radio">
+              <input type="radio" name="f-transfer" value="proxy">
+              <span><b data-i18n="st.proxy">经服务器中转</b><small data-i18n="st.proxyDesc"></small></span>
+            </label>
+            <label class="radio">
+              <input type="radio" name="f-transfer" value="direct">
+              <span><b data-i18n="st.direct">直连对象存储</b><small data-i18n="st.directDesc"></small></span>
+            </label>
+          </div>
+          <div id="st-direct-off" class="field-hint" data-i18n="st.directOff" hidden></div>
+        </fieldset>
+
+        <div id="st-direct" class="subcard" hidden>
+          <h4 data-i18n="st.directTitle">直连的选项</h4>
+          <div class="field" data-field="direct_url_ttl_seconds">
+            <label for="f-ttl" data-i18n="st.ttl">临时地址的有效期（秒）</label>
+            <input id="f-ttl" class="in-num" type="text" inputmode="numeric" maxlength="5" autocomplete="off">
+            <div class="field-hint" data-i18n="st.ttlHint"></div>
+          </div>
+          <div class="field" data-field="verify_direct_uploads">
+            <label class="check"><input id="f-verify" type="checkbox"><span data-i18n="st.verify"></span></label>
+            <div class="field-hint" data-i18n="st.verifyHint"></div>
+          </div>
+          <p id="st-chunk-warn" class="hint-warn" hidden></p>
+        </div>
+
+        <p class="form-error js-group-error" role="alert" hidden></p>
+        <div class="card-actions">
+          <button type="submit" class="btn btn-primary js-save">保存</button>
+          <button type="button" class="btn btn-ghost js-reset" data-i18n="s.reset" hidden>还原</button>
+        </div>
+      </form>
+
+      <!-- access -->
+      <form class="card s-group" id="g-access" data-group="access" novalidate>
+        <div class="card-head">
+          <h3 data-i18n="a.title">访问与安全</h3>
+          <span class="badge badge-dirty js-dirty" data-i18n="s.unsaved" hidden>未保存</span>
+        </div>
+        <div class="field" data-field="base_path">
+          <label for="f-base-path" data-i18n="a.basePath">入口路径（base_path）</label>
+          <input id="f-base-path" class="mono in-wide" type="text" maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false" data-i18n-attr="placeholder:a.basePathPh">
+          <div class="field-hint" data-i18n="a.basePathHint"></div>
+        </div>
+        <div id="a-base-warn" class="hint-warn" hidden>
+          <p data-i18n="a.baseWarn"></p>
+          <p id="a-base-preview"></p>
+        </div>
+        <div class="field" data-field="trust_forwarded_headers">
+          <label class="check"><input id="f-trust" type="checkbox"><span data-i18n="a.trust"></span></label>
+          <div class="field-hint" data-i18n="a.trustHint"></div>
+        </div>
+        <p class="form-error js-group-error" role="alert" hidden></p>
+        <div class="card-actions">
+          <button type="submit" class="btn btn-primary js-save">保存</button>
+          <button type="button" class="btn btn-ghost js-reset" data-i18n="s.reset" hidden>还原</button>
+        </div>
+      </form>
+
+      <!-- admin password -->
+      <form class="card" id="g-password" novalidate>
+        <div class="card-head"><h3 data-i18n="pw.title">管理员密码</h3></div>
+        <p id="pw-initial" class="hint-warn" data-i18n="pw.initial" hidden></p>
+        <p class="muted" data-i18n="pw.desc"></p>
+        <div class="pw-fields">
+          <div class="field">
+            <label for="pw-current" data-i18n="pw.current">当前密码</label>
+            <input id="pw-current" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false">
+            <p id="pw-current-error" class="field-error" role="alert" hidden></p>
+          </div>
+          <div class="field">
+            <label for="pw-new" data-i18n="pw.new">新密码</label>
+            <input id="pw-new" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false">
+            <div class="field-hint" data-i18n="pw.newHint"></div>
+            <p id="pw-new-error" class="field-error" role="alert" hidden></p>
+          </div>
+          <div class="field">
+            <label for="pw-repeat" data-i18n="pw.repeat">再输一遍新密码</label>
+            <input id="pw-repeat" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false">
+            <p id="pw-repeat-error" class="field-error" role="alert" hidden></p>
+          </div>
+        </div>
+        <p id="pw-error" class="form-error" role="alert" hidden></p>
+        <div class="card-actions">
+          <button id="pw-submit" type="submit" class="btn btn-primary">修改密码</button>
+        </div>
+      </form>
+
+      <div class="card" id="g-about">
+        <h3 data-i18n="s.infoTitle">服务器信息</h3>
+        <dl id="s-info" class="kv"></dl>
+        <p class="muted small" data-i18n="s.aboutNote"></p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ========================================================= dialogs -->
+<dialog id="dlg-delete" class="dialog" aria-labelledby="del-title">
+  <form id="del-form" novalidate>
+    <h2 id="del-title"></h2>
+    <ul id="del-names" class="name-list"></ul>
+    <div class="explain-pair">
+      <div class="explain" id="del-ex-only">
+        <strong data-i18n="del.onlyTitle">只删除</strong>
+        <span data-i18n="del.onlyDesc"></span>
+      </div>
+      <div class="explain" id="del-ex-block">
+        <strong data-i18n="del.blockTitle">删除并禁止</strong>
+        <span data-i18n="del.blockDesc"></span>
+      </div>
+    </div>
+    <label class="check">
+      <input type="checkbox" id="del-block">
+      <span data-i18n="del.block">同时禁止再次上传</span>
+    </label>
+    <label class="field" id="del-note-field" hidden>
+      <span data-i18n="del.note">备注（可选）</span>
+      <input id="del-note" type="text" maxlength="200" autocomplete="off" data-i18n-attr="placeholder:del.notePh">
+    </label>
+    <p id="del-error" class="form-error" role="alert" hidden></p>
+    <div class="dialog-actions">
+      <button type="button" class="btn js-dlg-cancel" data-i18n="cancel">取消</button>
+      <button type="submit" class="btn btn-danger" id="del-confirm">删除</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-unblock" class="dialog" aria-labelledby="unb-title">
+  <form id="unb-form" novalidate>
+    <h2 id="unb-title"></h2>
+    <ul id="unb-names" class="name-list"></ul>
+    <p class="muted" data-i18n="b.unblockDesc"></p>
+    <p id="unb-error" class="form-error" role="alert" hidden></p>
+    <div class="dialog-actions">
+      <button type="button" class="btn js-dlg-cancel" data-i18n="cancel">取消</button>
+      <button type="submit" class="btn btn-primary" id="unb-confirm">解除禁止</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-add" class="dialog" aria-labelledby="add-title">
+  <form id="add-form" novalidate>
+    <h2 id="add-title" data-i18n="b.addTitle">按 id 禁止一个模型</h2>
+    <p class="muted" data-i18n="b.addDesc"></p>
+    <label class="field">
+      <span data-i18n="b.addId">模型 id</span>
+      <input id="add-id" type="text" class="mono" maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false" data-i18n-attr="placeholder:b.addIdHint">
+    </label>
+    <label class="field">
+      <span data-i18n="b.addName">文件名（可选，只为了以后认得出是哪个）</span>
+      <input id="add-name" type="text" maxlength="200" autocomplete="off">
+    </label>
+    <label class="field">
+      <span data-i18n="del.note">备注（可选）</span>
+      <input id="add-note" type="text" maxlength="200" autocomplete="off" data-i18n-attr="placeholder:del.notePh">
+    </label>
+    <p id="add-error" class="form-error" role="alert" hidden></p>
+    <div class="dialog-actions">
+      <button type="button" class="btn js-dlg-cancel" data-i18n="cancel">取消</button>
+      <button type="submit" class="btn btn-danger" id="add-confirm">加入禁止名单</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-key" class="dialog" aria-labelledby="key-title">
+  <form id="key-form" novalidate>
+    <h2 id="key-title" data-i18n="c.regenTitle">更换客户端密钥</h2>
+    <p class="hint-warn" data-i18n="c.regenWarn"></p>
+    <div class="field">
+      <label for="key-new" data-i18n="c.newKey">新密钥</label>
+      <div class="input-row">
+        <input id="key-new" type="text" class="mono" maxlength="128" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button id="key-random" type="button" class="btn" data-i18n="c.random">重新随机</button>
+      </div>
+      <div class="field-hint" data-i18n="c.newKeyHint"></div>
+    </div>
+    <p id="key-error" class="form-error" role="alert" hidden></p>
+    <div class="dialog-actions">
+      <button type="button" class="btn js-dlg-cancel" data-i18n="cancel">取消</button>
+      <button type="submit" class="btn btn-danger" id="key-confirm">更换密钥</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-confirm" class="dialog" aria-labelledby="cf-title">
+  <form id="cf-form" novalidate>
+    <h2 id="cf-title"></h2>
+    <div id="cf-body" class="confirm-body"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn js-dlg-cancel" data-i18n="cancel">取消</button>
+      <button type="submit" class="btn btn-primary" id="cf-confirm"></button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+</body>
+</html>

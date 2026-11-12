@@ -1,0 +1,10 @@
+# 运行时数据和本机配置（里面有密钥，不要提交）
+/data/
+/config.yaml
+
+# 构建产物
+/bin/
+/dist/
+*.exe
+*.test
+*.out
